@@ -1,4 +1,4 @@
-﻿export const TURKISH_ISG_REGULATIONS = [
+export const TURKISH_ISG_REGULATIONS = [
   {
     code: '6331-M10',
     title: '6331 Sayılı İSG Kanunu - Madde 10 (Risk Değerlendirmesi, Kontrol ve Ölçüm)',
@@ -60,3 +60,76 @@ export const INITIAL_PROJECTS = [
     createdAt: new Date().toISOString()
   }
 ];
+
+export const PLAN_CONFIGS = {
+  DEMO_1_GUN: {
+    name: '1 Günlük Deneme Paketi',
+    durationDays: 1,
+    maxReports: 3,
+    badge: '1 Günlük Demo',
+    badgeVariant: 'warning' as const,
+    price: 'Ücretsiz',
+  },
+  AYLIK_PRO: {
+    name: 'Aylık Profesyonel İSG',
+    durationDays: 30,
+    maxReports: -1,
+    badge: 'Aylık Pro',
+    badgeVariant: 'success' as const,
+    price: '990 ₺ / Ay',
+  },
+  YILLIK_PRO: {
+    name: 'Yıllık Kurumsal & OSGB',
+    durationDays: 365,
+    maxReports: -1,
+    badge: 'Yıllık Pro',
+    badgeVariant: 'info' as const,
+    price: '8.900 ₺ / Yıl',
+  },
+};
+
+export const INITIAL_USERS = [
+  {
+    id: 'usr-admin',
+    email: 'admin@isgpro.com',
+    name: 'Sistem Yöneticisi (Admin)',
+    companyName: 'ISG-Pro Merkez Yönetim',
+    certificateNo: 'İSG-BAKANLIK-ADM01',
+    role: 'ADMIN' as const,
+    plan: 'YILLIK_PRO' as const,
+    planExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+    reportsCount: 42,
+    maxReportsAllowed: -1,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'usr-demo',
+    email: 'demo@isguzmani.com',
+    name: 'Ahmet Yılmaz (A Sınıfı)',
+    companyName: 'Kuzey İSG Mühendislik',
+    certificateNo: 'İSG-A-84921',
+    role: 'USER' as const,
+    plan: 'DEMO_1_GUN' as const,
+    planExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    reportsCount: 1,
+    maxReportsAllowed: 3,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'usr-monthly',
+    email: 'selin.demir@osgb.com',
+    name: 'Selin Demir (B Sınıfı)',
+    companyName: 'Akdeniz Ortak Sağlık Güvenlik Birimi (OSGB)',
+    certificateNo: 'İSG-B-43119',
+    role: 'USER' as const,
+    plan: 'AYLIK_PRO' as const,
+    planExpiresAt: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
+    reportsCount: 8,
+    maxReportsAllowed: -1,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  }
+];
+

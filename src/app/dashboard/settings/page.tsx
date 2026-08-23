@@ -2,56 +2,148 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { ShieldCheck, Key, User, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+import { useAuth } from '@/context/AuthContext';
+import { PLAN_CONFIGS } from '@/lib/constants';
+import { formatDate } from '@/lib/utils';
+import { ShieldCheck, Key, User, Check, Sparkles, Zap, Building } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 export default function SettingsPage() {
-  const [inspectorName, setInspectorName] = useState('Ahmet Yılmaz');
-  const [certificateNo, setCertificateNo] = useState('İSG-A-84921');
-  const [companyName, setCompanyName] = useState('Kuzey İSG Mühendislik & Danışmanlık');
+  const { currentUser, updateCurrentUserProfile, upgradePlan } = useAuth();
+
+  const [inspectorName, setInspectorName] = useState('');
+  const [certificateNo, setCertificateNo] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
-    try {
-      const savedKey = localStorage.getItem('user_gemini_key');
-      if (savedKey) setApiKey(savedKey);
-
-      const savedProfile = localStorage.getItem('user_isg_profile');
-      if (savedProfile) {
-        const p = JSON.parse(savedProfile);
-        setInspectorName(p.inspectorName || '');
-        setCertificateNo(p.certificateNo || '');
-        setCompanyName(p.companyName || '');
-      }
-    } catch (e) {
-      console.error(e);
+    if (currentUser) {
+      setInspectorName(currentUser.name || '');
+      setCertificateNo(currentUser.certificateNo || '');
+      setCompanyName(currentUser.companyName || '');
     }
-  }, []);
+    const savedKey = localStorage.getItem('user_gemini_key');
+    if (savedKey) setApiKey(savedKey);
+  }, [currentUser]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      if (apiKey) {
-        localStorage.setItem('user_gemini_key', apiKey);
-      }
-      localStorage.setItem(
-        'user_isg_profile',
-        JSON.stringify({ inspectorName, certificateNo, companyName })
-      );
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 2500);
-    } catch (e) {
-      console.error(e);
+    if (apiKey) {
+      localStorage.setItem('user_gemini_key', apiKey);
     }
+    updateCurrentUserProfile({
+      name: inspectorName,
+      certificateNo: certificateNo,
+      companyName: companyName,
+    });
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2500);
   };
 
+  const handleUpgrade = (planKey: 'DEMO_1_GUN' | 'AYLIK_PRO' | 'YILLIK_PRO') => {
+    upgradePlan(planKey);
+    confetti({ particleCount: 70, spread: 80, origin: { y: 0.7 } });
+    alert(`${PLAN_CONFIGS[planKey].name} başarıyla tanımlandı!`);
+  };
+
+  const planInfo = PLAN_CONFIGS[currentUser?.plan || 'DEMO_1_GUN'];
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
       <div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white">İSG Uzmanı & Sistem Ayarları</h1>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Hesap & Üyelik Ayarları</h1>
         <p className="text-sm text-slate-500">
-          Raporlarda ve yasal tutanaklarda görünecek belge ve yetki bilgilerinizi özelleştirin
+          İSG Katip yetki bilgilerinizi düzenleyin ve aktif üyelik paketinizi yönetin
         </p>
+      </div>
+
+      {/* Subscription Status & Plans Selection */}
+      <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Mevcut Üyelik Paketiniz:</span>
+              <Badge variant={planInfo?.badgeVariant || 'default'}>
+                {planInfo?.name}
+              </Badge>
+            </div>
+            <p className="text-xs text-slate-400">
+              Bitiş Tarihi: <strong className="text-white">{formatDate(currentUser?.planExpiresAt)}</strong> • Rapor Kotası: <strong className="text-white">{currentUser?.maxReportsAllowed === -1 ? 'Sınırsız' : `${currentUser?.reportsCount || 0}/${currentUser?.maxReportsAllowed} Rapor`}</strong>
+            </p>
+          </div>
+        </div>
+
+        {/* Plan Cards */}
+        <div>
+          <h3 className="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span>Paket Seçenekleri (Kullanıcı / OSGB Paketleri)</span>
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            {/* 1 Gun Demo */}
+            <div className={`bg-slate-950 p-4 rounded-2xl border ${currentUser?.plan === 'DEMO_1_GUN' ? 'border-amber-500 ring-1 ring-amber-500' : 'border-slate-800'} space-y-3 flex flex-col justify-between`}>
+              <div className="space-y-1.5">
+                <span className="font-bold text-sm text-white block">1 Günlük Deneme</span>
+                <span className="text-lg font-black text-amber-400 block">Ücretsiz</span>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Sistemi ve AI görsel analizini test etmek için 24 saat geçerli 3 rapor hakkı.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant={currentUser?.plan === 'DEMO_1_GUN' ? 'outline' : 'primary'}
+                onClick={() => handleUpgrade('DEMO_1_GUN')}
+                disabled={currentUser?.plan === 'DEMO_1_GUN'}
+              >
+                {currentUser?.plan === 'DEMO_1_GUN' ? 'Aktif Paket' : 'Demo Başlat (1 Gün)'}
+              </Button>
+            </div>
+
+            {/* Aylik Pro */}
+            <div className={`bg-slate-950 p-4 rounded-2xl border ${currentUser?.plan === 'AYLIK_PRO' ? 'border-amber-500 ring-1 ring-amber-500' : 'border-slate-800'} space-y-3 flex flex-col justify-between`}>
+              <div className="space-y-1.5">
+                <span className="font-bold text-sm text-white block">Aylık Profesyonel</span>
+                <span className="text-lg font-black text-emerald-400 block">990 ₺ <span className="text-xs font-normal text-slate-400">/ ay</span></span>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Bireysel İSG uzmanları için sınırsız şantiye, sınırsız AI denetimi ve resmi A4 tutanaklar.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant={currentUser?.plan === 'AYLIK_PRO' ? 'outline' : 'primary'}
+                onClick={() => handleUpgrade('AYLIK_PRO')}
+                disabled={currentUser?.plan === 'AYLIK_PRO'}
+              >
+                {currentUser?.plan === 'AYLIK_PRO' ? 'Aktif Paket' : 'Aylık Pakete Geç'}
+              </Button>
+            </div>
+
+            {/* Yillik Kurumsal */}
+            <div className={`bg-slate-950 p-4 rounded-2xl border ${currentUser?.plan === 'YILLIK_PRO' ? 'border-amber-500 ring-1 ring-amber-500' : 'border-slate-800'} space-y-3 flex flex-col justify-between relative overflow-hidden`}>
+              <div className="absolute top-2 right-2 bg-amber-500 text-slate-950 font-bold px-1.5 py-0.5 rounded text-[9px]">
+                %25 Avantajlı
+              </div>
+              <div className="space-y-1.5">
+                <span className="font-bold text-sm text-white block">Yıllık Kurumsal & OSGB</span>
+                <span className="text-lg font-black text-amber-400 block">8.900 ₺ <span className="text-xs font-normal text-slate-400">/ yıl</span></span>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  OSGB firmaları ve şantiyeler için 365 gün sınırsız raporlama ve öncelikli AI desteği.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant={currentUser?.plan === 'YILLIK_PRO' ? 'outline' : 'primary'}
+                onClick={() => handleUpgrade('YILLIK_PRO')}
+                disabled={currentUser?.plan === 'YILLIK_PRO'}
+              >
+                {currentUser?.plan === 'YILLIK_PRO' ? 'Aktif Paket' : 'Yıllık Pakete Geç'}
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
@@ -59,7 +151,7 @@ export default function SettingsPage() {
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-sm">
           <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <User className="w-5 h-5 text-amber-500" />
-            <span>Denetçi & İSG Uzmanı Bilgileri</span>
+            <span>İSG Uzmanı & Yetki Bilgileriniz</span>
           </h3>
 
           <div className="space-y-3 text-sm">
@@ -135,12 +227,12 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between pt-2">
           {isSaved ? (
             <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5">
-              <Check className="w-4 h-4" /> Ayarlar Başarıyla Kaydedildi!
+              <Check className="w-4 h-4" /> Profil Bilgileriniz Kaydedildi!
             </span>
           ) : <span />}
 
           <Button type="submit" variant="primary" size="lg">
-            Değişiklikleri Kaydet
+            Profil Bilgilerini Kaydet
           </Button>
         </div>
       </form>

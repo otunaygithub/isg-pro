@@ -7,14 +7,17 @@ import { HazardItem, ProjectSite, AIAnalysisResult, RiskSeverity } from '@/lib/t
 import { PhotoUploader } from '@/components/inspection/PhotoUploader';
 import { HazardCard } from '@/components/inspection/HazardCard';
 import { Button } from '@/components/ui/Button';
-import { Sparkles, Save, FileText, ArrowLeft, Building2, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { Sparkles, Save, FileText, ArrowLeft, Building2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import Link from 'next/link';
 
 function NewInspectionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialProjectId = searchParams.get('projectId') || INITIAL_PROJECTS[0].id;
 
+  const { currentUser, incrementReportCount } = useAuth();
   const [projects] = useState<ProjectSite[]>(INITIAL_PROJECTS);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(initialProjectId);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -23,6 +26,12 @@ function NewInspectionContent() {
   const [isSaving, setIsSaving] = useState(false);
 
   const currentProject = projects.find((p) => p.id === selectedProjectId) || projects[0];
+
+  const isQuotaExceeded =
+    currentUser?.maxReportsAllowed !== -1 &&
+    (currentUser?.reportsCount || 0) >= (currentUser?.maxReportsAllowed || 3);
+
+
 
   const handleAnalyzePhotos = async (
     files: { base64: string; mimeType: string; note?: string }[]
@@ -112,6 +121,7 @@ function NewInspectionContent() {
     try {
       const existing = JSON.parse(localStorage.getItem('isg_reports') || '[]');
       localStorage.setItem('isg_reports', JSON.stringify([reportData, ...existing]));
+      incrementReportCount();
     } catch (e) {
       console.error(e);
     }
@@ -124,6 +134,21 @@ function NewInspectionContent() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-12">
+      {/* Quota Exceeded Alert */}
+      {isQuotaExceeded && (
+        <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-rose-700 dark:text-rose-400">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <span>
+              <strong>Rapor Kotanız Doldu:</strong> 1 Günlük Demo paketinizdeki 3 rapor limitine ulaştınız. Sınırsız denetim yapmak için paketinizi yükseltin.
+            </span>
+          </div>
+          <Link href="/dashboard/settings">
+            <Button size="sm" variant="danger">Paketi Yükselt (Pro)</Button>
+          </Link>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">

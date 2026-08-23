@@ -1,4 +1,23 @@
-﻿export type RiskSeverity = 'DÜŞÜK' | 'ORTA' | 'YÜKSEK' | 'ACİL_DURDURMA';
+export type RiskSeverity = 'DÜŞÜK' | 'ORTA' | 'YÜKSEK' | 'ACİL_DURDURMA';
+
+export type UserRole = 'ADMIN' | 'USER';
+
+export type PlanType = 'DEMO_1_GUN' | 'AYLIK_PRO' | 'YILLIK_PRO';
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  name: string;
+  companyName: string;
+  certificateNo: string; // İSG Katip Belge No
+  role: UserRole;
+  plan: PlanType;
+  planExpiresAt: string; // ISO Date string
+  reportsCount: number;
+  maxReportsAllowed: number; // 1 günlük demo için 3 rapor, aylık/yıllık için sınırsız (-1)
+  isActive: boolean;
+  createdAt: string;
+}
 
 export type HazardCategory = 
   | 'Yüksekte Çalışma & İskele'
@@ -65,3 +84,4 @@ export interface AIAnalysisResult {
   deadlineHours: number;
   suggestedSubcontractor: string;
 }
+
