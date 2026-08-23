@@ -70,8 +70,9 @@ export default function SettingsPage() {
               </Badge>
             </div>
             <p className="text-xs text-slate-400">
-              Bitiş Tarihi: <strong className="text-white">{formatDate(currentUser?.planExpiresAt)}</strong> • Rapor Kotası: <strong className="text-white">{currentUser?.maxReportsAllowed === -1 ? 'Sınırsız' : `${currentUser?.reportsCount || 0}/${currentUser?.maxReportsAllowed} Rapor`}</strong>
+              Bitiş Tarihi: <strong className="text-white">{formatDate(currentUser?.planExpiresAt || new Date().toISOString())}</strong> • Rapor Kotası: <strong className="text-white">{currentUser?.maxReportsAllowed === -1 ? 'Sınırsız' : `${currentUser?.reportsCount || 0}/${currentUser?.maxReportsAllowed} Rapor`}</strong>
             </p>
+
           </div>
         </div>
 

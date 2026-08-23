@@ -2,10 +2,23 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ShieldCheck, HardHat, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ShieldCheck, HardHat, Sparkles, LogOut, LogIn, User } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/context/AuthContext';
+import { Badge } from '@/components/ui/Badge';
+import { PLAN_CONFIGS } from '@/lib/constants';
 
 export const Navbar: React.FC = () => {
+  const router = useRouter();
+  const { currentUser, isAuthenticated, logout } = useAuth();
+  const planInfo = currentUser ? PLAN_CONFIGS[currentUser.plan] : null;
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -24,16 +37,40 @@ export const Navbar: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/inspections/new">
-            <Button size="sm" leftIcon={<Sparkles className="w-4 h-4" />}>
-              Hızlı Denetim Başlat
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button variant="outline" size="sm">
-              Panel
-            </Button>
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link href="/dashboard/inspections/new">
+                <Button size="sm" leftIcon={<Sparkles className="w-4 h-4" />}>
+                  Hızlı Denetim Başlat
+                </Button>
+              </Link>
+              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800 text-xs">
+                <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[120px]">
+                  {currentUser?.name?.split(' ')[0]}
+                </span>
+                {planInfo && (
+                  <Badge variant={planInfo.badgeVariant}>
+                    {planInfo.badge}
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                title="Güvenli Çıkış Yap"
+                leftIcon={<LogOut className="w-4 h-4 text-rose-500" />}
+              >
+                Çıkış
+              </Button>
+            </>
+          ) : (
+            <Link href="/login">
+              <Button size="sm" leftIcon={<LogIn className="w-4 h-4" />}>
+                Giriş Yap / Üye Ol
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </header>

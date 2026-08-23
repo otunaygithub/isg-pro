@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { PLAN_CONFIGS } from '@/lib/constants';
+
 import { PlanType, UserAccount, UserRole } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -22,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminPage() {
+  const router = useRouter();
   const { 
     currentUser, 
     allUsers, 
@@ -30,6 +33,21 @@ export default function AdminPage() {
     adminCreateUser, 
     adminDeleteUser 
   } = useAuth();
+
+  useEffect(() => {
+    if (currentUser && currentUser.role !== 'ADMIN') {
+      router.replace('/dashboard');
+    }
+  }, [currentUser, router]);
+
+  if (currentUser?.role !== 'ADMIN') {
+    return (
+      <div className="p-8 text-center text-xs text-rose-500 font-semibold">
+        Bu sayfaya erişim yetkiniz bulunmamaktadır. Yalnızca Admin kullanıcılar görüntüleyebilir.
+      </div>
+    );
+  }
+
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);

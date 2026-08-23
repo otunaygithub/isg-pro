@@ -38,14 +38,14 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/dashboard">
+            <Link href="/login">
               <Button variant="ghost" size="sm" className="text-slate-300">
                 Giriş Yap
               </Button>
             </Link>
-            <Link href="/dashboard/inspections/new">
+            <Link href="/login">
               <Button size="sm" leftIcon={<Sparkles className="w-4 h-4" />}>
-                Ücretsiz Dene
+                1 Günlük Ücretsiz Demo
               </Button>
             </Link>
           </div>
@@ -72,17 +72,18 @@ export default function Home() {
         </p>
 
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link href="/dashboard/inspections/new" className="w-full sm:w-auto">
+          <Link href="/login" className="w-full sm:w-auto">
             <Button size="lg" className="w-full text-base px-8 py-4" leftIcon={<Camera className="w-5 h-5" />}>
-              Hemen Fotoğraf Yükle & Test Et
+              1 Günlük Demo Başlat & Fotoğraf Yükle
             </Button>
           </Link>
-          <Link href="/dashboard" className="w-full sm:w-auto">
+          <Link href="/login" className="w-full sm:w-auto">
             <Button variant="outline" size="lg" className="w-full border-slate-700 text-slate-200">
-              Demo Paneli İncele
+              Mevcut Üye Girişi
             </Button>
           </Link>
         </div>
+
 
         {/* Feature badges */}
         <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">

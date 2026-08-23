@@ -5,8 +5,12 @@ import { UserAccount, PlanType, UserRole } from '@/lib/types';
 import { INITIAL_USERS } from '@/lib/constants';
 
 interface AuthContextType {
-  currentUser: UserAccount;
+  currentUser: UserAccount | null;
+  isAuthenticated: boolean;
   allUsers: UserAccount[];
+  login: (email: string) => boolean;
+  logout: () => void;
+  register: (data: { name: string; email: string; companyName: string; certificateNo: string }) => void;
   switchUser: (userId: string) => void;
   updateCurrentUserProfile: (profile: Partial<UserAccount>) => void;
   adminUpdateUser: (userId: string, updates: Partial<UserAccount>) => void;
@@ -20,7 +24,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [allUsers, setAllUsers] = useState<UserAccount[]>(INITIAL_USERS);
-  const [currentUserId, setCurrentUserId] = useState<string>('usr-admin');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     try {
@@ -34,6 +39,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsLoaded(true);
     }
   }, []);
 
@@ -46,18 +53,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const currentUser = allUsers.find((u) => u.id === currentUserId) || allUsers[0];
+  const currentUser = currentUserId
+    ? allUsers.find((u) => u.id === currentUserId && u.isActive) || null
+    : null;
 
-  const switchUser = (userId: string) => {
-    setCurrentUserId(userId);
+  const isAuthenticated = !!currentUser;
+
+  const login = (email: string): boolean => {
+    const found = allUsers.find(
+      (u) => u.email.toLowerCase().trim() === email.toLowerCase().trim() && u.isActive
+    );
+    if (found) {
+      setCurrentUserId(found.id);
+      try {
+        localStorage.setItem('isg_active_user_id', found.id);
+      } catch (e) {
+        console.error(e);
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setCurrentUserId(null);
     try {
-      localStorage.setItem('isg_active_user_id', userId);
+      localStorage.removeItem('isg_active_user_id');
     } catch (e) {
       console.error(e);
     }
   };
 
+  const register = (data: { name: string; email: string; companyName: string; certificateNo: string }) => {
+    const newUser: UserAccount = {
+      id: `usr-${Date.now()}`,
+      name: data.name,
+      email: data.email,
+      companyName: data.companyName,
+      certificateNo: data.certificateNo,
+      role: 'USER',
+      plan: 'DEMO_1_GUN',
+      planExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      reportsCount: 0,
+      maxReportsAllowed: 3,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [...allUsers, newUser];
+    saveUsers(updated);
+    setCurrentUserId(newUser.id);
+    try {
+      localStorage.setItem('isg_active_user_id', newUser.id);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const switchUser = (userId: string) => {
+    const target = allUsers.find((u) => u.id === userId);
+    if (target) {
+      setCurrentUserId(target.id);
+      try {
+        localStorage.setItem('isg_active_user_id', target.id);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
   const updateCurrentUserProfile = (profile: Partial<UserAccount>) => {
+    if (!currentUser) return;
     const updated = allUsers.map((u) =>
       u.id === currentUser.id ? { ...u, ...profile } : u
     );
@@ -88,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = allUsers.filter((u) => u.id !== userId);
     saveUsers(updated);
     if (currentUserId === userId) {
-      switchUser(updated[0].id);
+      setCurrentUserId(updated[0]?.id || null);
     }
   };
 
@@ -114,6 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const incrementReportCount = () => {
+    if (!currentUser) return;
     updateCurrentUserProfile({
       reportsCount: (currentUser.reportsCount || 0) + 1,
     });
@@ -123,7 +190,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         currentUser,
+        isAuthenticated,
         allUsers,
+        login,
+        logout,
+        register,
         switchUser,
         updateCurrentUserProfile,
         adminUpdateUser,
