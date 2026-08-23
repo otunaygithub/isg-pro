@@ -36,6 +36,11 @@ function NewInspectionContent() {
   const handleAnalyzePhotos = async (
     files: { base64: string; mimeType: string; note?: string }[]
   ) => {
+    if (isQuotaExceeded) {
+      alert('1 Günlük Demo paketinizdeki 3 adet AI analiz hakkınız dolmuştur. Lütfen devam etmek için paketinizi yükseltin.');
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
       const userApiKey = typeof window !== 'undefined' ? localStorage.getItem('user_gemini_key') || undefined : undefined;
@@ -53,7 +58,6 @@ function NewInspectionContent() {
             apiKey: userApiKey,
           }),
         });
-
 
         const json = await res.json();
         const data: AIAnalysisResult = json.data;
@@ -75,6 +79,8 @@ function NewInspectionContent() {
       }
 
       setHazards((prev) => [...prev, ...newHazardItems]);
+      // AI analiz butonuna basıldığında kullanım hakkını düşür
+      incrementReportCount();
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.8 } });
     } catch (error) {
       console.error('Analiz hatası:', error);
@@ -121,7 +127,6 @@ function NewInspectionContent() {
     try {
       const existing = JSON.parse(localStorage.getItem('isg_reports') || '[]');
       localStorage.setItem('isg_reports', JSON.stringify([reportData, ...existing]));
-      incrementReportCount();
     } catch (e) {
       console.error(e);
     }
@@ -131,6 +136,7 @@ function NewInspectionContent() {
       router.push(`/dashboard/inspections/${reportId}/report`);
     }, 600);
   };
+
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-12">
