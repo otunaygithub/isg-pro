@@ -16,22 +16,33 @@ export async function analyzeHazardImageWithGemini(
   const ai = new GoogleGenAI({ apiKey: activeKey });
 
   const prompt = `
-Sen Türkiye Cumhuriyeti 6331 sayılı İş Sağlığı ve Güvenliği Kanunu, Yapı İşlerinde İSG Yönetmeliği ve ilgili mevzuata tam hakim Kıdemli Baş İSG Denetçisisin.
-Fotoğraftaki şantiye veya çalışma sahası görüntüsünü incele. Varsa kullanıcının şu notunu dikkate al: "${userNote || 'Ek not yok'}".
+Sen T.C. Çalışma ve Sosyal Güvenlik Bakanlığı İş Teftiş Kurulu standartlarında denetim yapan, 20+ yıl şantiye tecrübesine sahip, 6331 sayılı İSG Kanunu ve Yapı İşlerinde İSG Yönetmeliği'ne harfiyen hakim Kıdemli Baş İSG Başmüfettişisin.
 
-Aşağıdaki JSON yapısında Türkçe bir JSON yanıtı ver:
+GÖREVİN:
+Yüklenen şantiye/çalışma sahası fotoğrafını piksel düzeyinde titizlikle incele. Varsa kullanıcının eklediği şu bağlam notunu da dikkate al: "${userNote || 'Ek not yok'}".
+
+FOTOĞRAFI ŞU 6 DERİN KRİTERE GÖRE İNCELE VE TEŞHİS KOY:
+1. GÖRSEL KANIT TESPİTİ (Visual Evidence): Fotoğrafta tam olarak ne görünüyor? (Örn: Korkuluksuz döşeme kenarı, baret takmayan işçi, izolesiz açık kablo, topuk levhasız iskele, iksasız derin kazı şevi, emniyetsiz yük kaldırma vb.)
+2. TEHLİKE VE RİSK BOYUTU: Bu durum ne tür bir iş kazasına (Ölümcül düşme, elektrik çarpması, göçük, malzeme düşmesi) yol açabilir?
+3. TÜRK İSG MEVZUATI EŞLEŞTİRMESİ: İlgili yönetmelik ve maddeyi eksiksiz yaz (Örn: "Yapı İşlerinde İSG Yönetmeliği Ek-4 Bölüm II Madde 2.1 & 6331 Sayılı Kanun Madde 10").
+4. 5x5 RİSK MATRİSİ PUANLAMASI: Olasılık (1-5) x Şiddet (1-5) hesaplayarak 1-25 arası net risk skoru ver.
+5. DÖF (Düzeltici ve Önleyici Faaliyet): Sahada şantiye şefinin ve taşeronun derhal yapması gereken teknik adımları net, somut ve uygulanabilir emir kipiyle yaz.
+6. TERMİN SÜRESİ VE DİSİPLİN: Tehlikenin ciddiyetine göre düzeltilmesi gereken süre (Saat: 2, 12, 24 veya 48) ve sorumlu taşeron disiplini.
+
+AŞAĞIDAKİ JSON ŞEMASINA HARFİYEN UYGUN TEK BİR JSON NESNESİ DÖNDÜR:
 {
-  "title": "Kısa ve net tehlike başlığı",
-  "description": "Sahada tespit edilen tehlikenin net ve teknik açıklaması",
+  "title": "Kesin, teknik ve resmi tehlike başlığı (Örn: 5. Kat Dış Cephe İskelesinde Eksik Ara Korkuluk ve Topuk Levhası)",
+  "description": "Fotoğrafta görülen tehlikenin ayrıntılı, teknik ve gerekçeli açıklaması.",
   "category": "Yüksekte Çalışma & İskele" | "Kişisel Koruyucu Donanım (KKD)" | "Elektrik & Tesisat Güvenliği" | "Kazı, İksa & Çökme Tehlikesi" | "Yangın & Acil Durum" | "İş Ekipmanları & İş Makineleri" | "İstifleme, Düzen & Temizlik" | "Kimyasal & Tehlikeli Maddeler" | "Genel Saha Emniyeti",
   "severity": "DÜŞÜK" | "ORTA" | "YÜKSEK" | "ACİL_DURDURMA",
-  "riskScore": 15,
-  "regulationReference": "Mevzuat referansı (Örn: Yapı İşlerinde İSG Yönetmeliği Ek-4 Bölüm II Madde 2 ve 6331 Sayılı Kanun Madde 10)",
-  "correctiveAction": "DÖF: Sahada derhal yapılması gereken düzeltici ve önleyici faaliyet.",
+  "riskScore": 1 ile 25 arasında tam sayı,
+  "regulationReference": "T.C. Mevzuatındaki tam madde (Örn: Yapı İşlerinde İSG Yönetmeliği Ek-4 Bölüm II Madde 2 ve 6331 Sayılı Kanun Madde 10)",
+  "correctiveAction": "DÖF: Sahada derhal uygulanacak teknik düzeltici faaliyet ve güvenlik tedbiri.",
   "deadlineHours": 24,
-  "suggestedSubcontractor": "Sorumlu taşeron disiplini (Örn: Kalıp & İskele Taşeronu, Elektrik Taşeronu)"
+  "suggestedSubcontractor": "Sorumlu taşeron ekibi (Örn: İskele Taşeronu, Elektrik Ekibi, Kaba Yapı & Kalıp Taşeronu)"
 }
-SADECE JSON döndür.
+
+YALNIZCA geçerli JSON formatında yanıt ver. Markdown veya ek metin ekleme.
 `;
 
   try {
@@ -55,6 +66,7 @@ SADECE JSON döndür.
       ],
       config: {
         responseMimeType: 'application/json',
+        temperature: 0.1, // Düşük sıcaklık ile en yüksek doğruluk ve tutarlılık
       },
     });
 
@@ -71,13 +83,13 @@ function simulateHazardAnalysis(userNote?: string): AIAnalysisResult {
 
   if (noteLower.includes('elektrik') || noteLower.includes('kablo') || noteLower.includes('pano')) {
     return {
-      title: 'Açıkta Duran Şantiye Elektrik Panosu & Kaçak Akım Rölesi Eksikliği',
-      description: 'Saha geçiş güzergahında bulunan tali elektrik panosunun kapağı açık, kablolar açıkta ve su birikintisine yakın vaziyettedir. Kaçak akım koruma rölesi devre dışı bırakılmıştır.',
+      title: 'Açıkta Duran Tali Şantiye Elektrik Panosu & Kaçak Akım Rölesi (30mA) Eksikliği',
+      description: 'Saha ana geçiş güzergahında bulunan tali elektrik panosunun kapağı açık vaziyette bırakılmış, klemens bağlantıları açıkta ve zemin nemine maruz kalacak şekildedir. Hayati kaçak akım koruma rölesinin bulunmadığı tespit edilmiştir.',
       category: 'Elektrik & Tesisat Güvenliği',
       severity: 'ACİL_DURDURMA',
-      riskScore: 20,
-      regulationReference: 'Elektrik İç Tesisleri Yönetmeliği & Yapı İşlerinde İSG Yönetmeliği Ek-4 Madde 45',
-      correctiveAction: 'Pano enerjisi derhal kesilmeli, IP65 standartlı kilitli panoya alınmalı ve 30mA kaçak akım rölesi montajı yapılarak test edilmelidir.',
+      riskScore: 25,
+      regulationReference: 'Elektrik İç Tesisleri Yönetmeliği & Yapı İşlerinde İSG Yönetmeliği Ek-4 Madde 45 ve 6331 Sayılı Kanun Madde 10',
+      correctiveAction: 'Pano enerjisi derhal kesilmeli, panonun kilitli IP65 standart kutuya montajı sağlanmalı, 30mA hayat koruma kaçak akım rölesi takılarak topraklama ölçümü yapılmalıdır.',
       deadlineHours: 2,
       suggestedSubcontractor: 'Elektrik Tesisat Taşeronu'
     };
@@ -85,27 +97,27 @@ function simulateHazardAnalysis(userNote?: string): AIAnalysisResult {
 
   if (noteLower.includes('baret') || noteLower.includes('yelek') || noteLower.includes('kkd')) {
     return {
-      title: 'Çalışanların Temel KKD (Baret ve Reflektif Yelek) Kullanmaması',
-      description: 'Çalışma alanında aktif vinç ve malzeme hareketi varken personelin baret ve yüksek görünürlüklü yelek olmadan çalıştığı tespit edilmiştir.',
+      title: 'Çalışanların Ağır Yük Altında Temel KKD (EN 397 Baret ve Reflektif Yelek) Kullanmaması',
+      description: 'Aktif kule vinç malzeme hareketi ve cephe çalışması bulunan sahada çalışanların standartlara uygun baret ve yüksek görünürlüklü reflektif yelek kullanmaksızın imalat yaptığı tespit edilmiştir.',
       category: 'Kişisel Koruyucu Donanım (KKD)',
       severity: 'ORTA',
-      riskScore: 12,
-      regulationReference: '6331 Sayılı İSG Kanunu Madde 19 & KKD Yönetmeliği Madde 6',
-      correctiveAction: 'Çalışanlara derhal standartlara uygun EN 397 belgeli baret ve yelek temin edilmeli, İSG zimmet formu imzalatılmalıdır.',
+      riskScore: 15,
+      regulationReference: '6331 Sayılı İSG Kanunu Madde 19 ve KKD Yönetmeliği Madde 6 uyarınca çalışanların KKD kullanma yükümlülüğü',
+      correctiveAction: 'Tüm saha personeline CE ve EN 397 belgeli baret ile reflektif yelek derhal teslim edilmeli, zimmet tutanakları imzalatılmalı ve KKD olmadan sahaya giriş kesinlikle yasaklanmalıdır.',
       deadlineHours: 12,
-      suggestedSubcontractor: 'Kaba Yapı Taşeronu'
+      suggestedSubcontractor: 'Kaba Yapı & Kalıp Taşeronu'
     };
   }
 
   return {
-    title: 'Döşeme Kenarı ve Dış Cephede Standart Düşme Önleyici Korkuluk Eksikliği',
-    description: 'Yüksekliği 2 metreyi aşan döşeme kenarında ana korkuluk (100 cm), ara korkuluk (47 cm) ve topuk levhası (15 cm) bulunmamaktadır. Yüksekten düşme riski mevcuttur.',
+    title: 'Döşeme Kenarı ve Dış Cephede Standart Düşme Önleyici Üçlü Korkuluk Eksikliği',
+    description: 'Yüksekliği 2 metreyi aşan döşeme kenarında 100 cm ana korkuluk, 47 cm ara korkuluk ve 15 cm topuk levhasından oluşan TS EN 13374 standartlı geçici kenar koruma sistemi bulunmamaktadır. Ölümcül yüksekten düşme riski mevcuttur.',
     category: 'Yüksekte Çalışma & İskele',
     severity: 'YÜKSEK',
     riskScore: 20,
-    regulationReference: 'Yapı İşlerinde İSG Yönetmeliği Ek-4 Bölüm II Madde 2 & 6331 Sayılı Kanun Madde 10',
-    correctiveAction: 'Kenar koruma bariyerleri ve topuk levhaları standartlara uygun şekilde ivedilikle monte edilmeli, çalışma bu süre zarfında durdurulmalıdır.',
+    regulationReference: 'Yapı İşlerinde İSG Yönetmeliği Ek-4 Bölüm II Madde 2 & 6331 Sayılı Kanun Madde 10 ve 13',
+    correctiveAction: 'Döşeme kenarına TS EN 13374 standardına uygun ana korkuluk, ara korkuluk ve topuk levhası ivedilikle monte edilmeli, montaj tamamlanana kadar o hatta çalışma durdurulmalıdır.',
     deadlineHours: 24,
-    suggestedSubcontractor: 'Kalıp ve İskele Taşeronu'
+    suggestedSubcontractor: 'Kalıp & İskele Taşeronu'
   };
 }

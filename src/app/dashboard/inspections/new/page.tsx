@@ -29,6 +29,7 @@ function NewInspectionContent() {
   ) => {
     setIsAnalyzing(true);
     try {
+      const userApiKey = typeof window !== 'undefined' ? localStorage.getItem('user_gemini_key') || undefined : undefined;
       const newHazardItems: HazardItem[] = [];
 
       for (const file of files) {
@@ -40,8 +41,10 @@ function NewInspectionContent() {
             base64Image: file.base64,
             mimeType: file.mimeType,
             userNote: file.note,
+            apiKey: userApiKey,
           }),
         });
+
 
         const json = await res.json();
         const data: AIAnalysisResult = json.data;
