@@ -16,8 +16,11 @@ export interface UserAccount {
   reportsCount: number;
   maxReportsAllowed: number; // 1 günlük demo için 3 rapor, aylık/yıllık için sınırsız (-1)
   isActive: boolean;
+  isEmailVerified: boolean;
+  emailVerificationCode?: string;
   createdAt: string;
 }
+
 
 export type HazardCategory = 
   | 'Yüksekte Çalışma & İskele'

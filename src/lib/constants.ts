@@ -101,6 +101,7 @@ export const INITIAL_USERS = [
     reportsCount: 42,
     maxReportsAllowed: -1,
     isActive: true,
+    isEmailVerified: true,
     createdAt: new Date().toISOString(),
   },
   {
@@ -115,6 +116,7 @@ export const INITIAL_USERS = [
     reportsCount: 1,
     maxReportsAllowed: 3,
     isActive: true,
+    isEmailVerified: true,
     createdAt: new Date().toISOString(),
   },
   {
@@ -129,7 +131,9 @@ export const INITIAL_USERS = [
     reportsCount: 8,
     maxReportsAllowed: -1,
     isActive: true,
+    isEmailVerified: true,
     createdAt: new Date().toISOString(),
   }
 ];
+
 

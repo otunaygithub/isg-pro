@@ -1,31 +1,47 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserAccount, PlanType, UserRole } from '@/lib/types';
+import { UserAccount, PlanType, UserRole, InspectionReport } from '@/lib/types';
 import { INITIAL_USERS } from '@/lib/constants';
 
 interface AuthContextType {
   currentUser: UserAccount | null;
   isAuthenticated: boolean;
   allUsers: UserAccount[];
-  login: (email: string) => boolean;
+  allReports: InspectionReport[];
+  login: (email: string) => { success: boolean; requiresVerification?: boolean; message?: string };
   logout: () => void;
-  register: (data: { name: string; email: string; companyName: string; certificateNo: string }) => void;
+  registerWithVerification: (data: { name: string; email: string; companyName: string; certificateNo: string }) => { verificationCode: string };
+  verifyEmail: (email: string, code: string) => boolean;
   switchUser: (userId: string) => void;
   updateCurrentUserProfile: (profile: Partial<UserAccount>) => void;
   adminUpdateUser: (userId: string, updates: Partial<UserAccount>) => void;
   adminCreateUser: (user: Omit<UserAccount, 'id' | 'createdAt'>) => void;
   adminDeleteUser: (userId: string) => void;
+  adminDeleteReport: (reportId: string) => void;
   upgradePlan: (newPlan: PlanType) => void;
   incrementReportCount: () => void;
+  refreshReports: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [allUsers, setAllUsers] = useState<UserAccount[]>(INITIAL_USERS);
+  const [allReports, setAllReports] = useState<InspectionReport[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const refreshReports = () => {
+    try {
+      const stored = localStorage.getItem('isg_reports');
+      if (stored) {
+        setAllReports(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -37,6 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (storedActiveId) {
         setCurrentUserId(storedActiveId);
       }
+      refreshReports();
     } catch (e) {
       console.error(e);
     } finally {
@@ -59,20 +76,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAuthenticated = !!currentUser;
 
-  const login = (email: string): boolean => {
+  const login = (email: string): { success: boolean; requiresVerification?: boolean; message?: string } => {
     const found = allUsers.find(
-      (u) => u.email.toLowerCase().trim() === email.toLowerCase().trim() && u.isActive
+      (u) => u.email.toLowerCase().trim() === email.toLowerCase().trim()
     );
-    if (found) {
-      setCurrentUserId(found.id);
-      try {
-        localStorage.setItem('isg_active_user_id', found.id);
-      } catch (e) {
-        console.error(e);
-      }
-      return true;
+
+    if (!found) {
+      return { success: false, message: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' };
     }
-    return false;
+
+    if (!found.isActive) {
+      return { success: false, message: 'Hesabınız yönetici tarafından dondurulmuştur.' };
+    }
+
+    if (!found.isEmailVerified) {
+      return { 
+        success: false, 
+        requiresVerification: true, 
+        message: 'E-posta adresiniz henüz onaylanmamış. Lütfen 6 haneli aktivasyon kodunuzu girin.' 
+      };
+    }
+
+    setCurrentUserId(found.id);
+    try {
+      localStorage.setItem('isg_active_user_id', found.id);
+    } catch (e) {
+      console.error(e);
+    }
+    return { success: true };
   };
 
   const logout = () => {
@@ -84,11 +115,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = (data: { name: string; email: string; companyName: string; certificateNo: string }) => {
+  const registerWithVerification = (data: { 
+    name: string; 
+    email: string; 
+    companyName: string; 
+    certificateNo: string 
+  }) => {
+    // Generate a 6-digit confirmation code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
     const newUser: UserAccount = {
       id: `usr-${Date.now()}`,
       name: data.name,
-      email: data.email,
+      email: data.email.toLowerCase().trim(),
       companyName: data.companyName,
       certificateNo: data.certificateNo,
       role: 'USER',
@@ -97,17 +136,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       reportsCount: 0,
       maxReportsAllowed: 3,
       isActive: true,
+      isEmailVerified: false, // Must be verified
+      emailVerificationCode: verificationCode,
       createdAt: new Date().toISOString(),
     };
 
-    const updated = [...allUsers, newUser];
+    const updated = [...allUsers.filter((u) => u.email.toLowerCase() !== data.email.toLowerCase()), newUser];
     saveUsers(updated);
-    setCurrentUserId(newUser.id);
-    try {
-      localStorage.setItem('isg_active_user_id', newUser.id);
-    } catch (e) {
-      console.error(e);
+
+    return { verificationCode };
+  };
+
+  const verifyEmail = (email: string, code: string): boolean => {
+    const target = allUsers.find(
+      (u) => u.email.toLowerCase().trim() === email.toLowerCase().trim()
+    );
+
+    if (target && target.emailVerificationCode === code.trim()) {
+      const updated = allUsers.map((u) =>
+        u.id === target.id
+          ? { ...u, isEmailVerified: true, emailVerificationCode: undefined }
+          : u
+      );
+      saveUsers(updated);
+      setCurrentUserId(target.id);
+      try {
+        localStorage.setItem('isg_active_user_id', target.id);
+      } catch (e) {
+        console.error(e);
+      }
+      return true;
     }
+
+    return false;
   };
 
   const switchUser = (userId: string) => {
@@ -141,6 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const created: UserAccount = {
       ...newUser,
       id: `usr-${Date.now()}`,
+      isEmailVerified: true,
       createdAt: new Date().toISOString(),
     };
     saveUsers([...allUsers, created]);
@@ -155,6 +217,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveUsers(updated);
     if (currentUserId === userId) {
       setCurrentUserId(updated[0]?.id || null);
+    }
+  };
+
+  const adminDeleteReport = (reportId: string) => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('isg_reports') || '[]');
+      const filtered = stored.filter((r: InspectionReport) => r.id !== reportId);
+      localStorage.setItem('isg_reports', JSON.stringify(filtered));
+      setAllReports(filtered);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -192,16 +265,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUser,
         isAuthenticated,
         allUsers,
+        allReports,
         login,
         logout,
-        register,
+        registerWithVerification,
+        verifyEmail,
         switchUser,
         updateCurrentUserProfile,
         adminUpdateUser,
         adminCreateUser,
         adminDeleteUser,
+        adminDeleteReport,
         upgradePlan,
         incrementReportCount,
+        refreshReports,
       }}
     >
       {children}
